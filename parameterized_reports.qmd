@@ -1,0 +1,106 @@
+---
+title: Analytics Report
+author: 
+  - name: Edward B. Quinn
+echo: false
+format: 
+    typst: 
+        template-partials: 
+            - typst-show.typ
+            - typst-template.typ
+# metadata parameters
+demographic_parameter: "Urban Females"
+---
+```{python}
+#| tags: [parameters]
+
+demographic_parameter = "Urban Females"
+
+
+```
+
+
+```{python}
+
+import polars as pl
+from plotnine import *
+import chardet
+
+```
+
+
+```{python}
+#| include: false
+
+def detect_encoding(filename: str) -> str:
+    """Return the most probable character encoding for a file."""
+
+    with open(filename, "rb") as f:
+        raw_data = f.read()
+        result = chardet.detect(raw_data)
+        return result["encoding"]
+
+detect_encoding("4Oct21_for_Dryad.txt")
+
+```
+
+
+
+```{python}
+
+
+df = pl.read_csv(
+    "4Oct21_for_Dryad.txt",
+    encoding="MacRoman",
+    separator='\t',
+    null_values=["NA"],
+    infer_schema_length=None).with_columns(
+    lifestyle_plus_sex = pl.when((pl.col("Sex") == "M") & (pl.col("Lifestyle") == "Urban"))
+    .then(pl.lit("Urban Males"))
+    .when((pl.col("Sex") == "F") & (pl.col("Lifestyle") == "Urban"))
+    .then(pl.lit("Urban Females"))
+    .when((pl.col("Sex") == "M") & (pl.col("Lifestyle") == "Pastoralist"))
+    .then(pl.lit("Pastoralist Males"))
+    .otherwise(pl.lit("Pastoralist Females"))
+)
+
+```
+
+
+```{python}
+
+
+df2 = df.filter(
+    pl.col("lifestyle_plus_sex") == demographic_parameter
+)
+
+
+```
+
+# Summary
+
+First, you have to introduce the data.
+
+# Graph for `{python} demographic_parameter` (n = `{python} df2.height`)
+
+Below is a graph looking at body mass index and systolic blood pressure.
+
+```{python}
+#| warning: false
+
+(
+    ggplot(df2,
+    aes(x = "Systolic BP", y = "BMI"))
+    + geom_point()
+    # + labs(caption = f"BMI and Systolic BP for {demographic_parameter}")
+    + theme_minimal(base_size=12, base_family="Arial")
+    + scale_y_continuous(limits=[10,35])
+    + scale_x_continuous(limits=[50, 200])
+)
+
+
+
+```
+
+
+
